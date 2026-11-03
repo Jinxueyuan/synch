@@ -35,6 +35,8 @@ export interface VersionHistoryViewController {
 export class SynchVersionHistoryView extends ItemView {
   private requestId = 0;
   private loading = false;
+  private clearing = false;
+  private previewCleared = false;
   private state: VersionHistoryViewState | null = null;
   private versions: SynchEntryVersion[] = [];
   private nextBefore: SynchEntryVersionCursor | null = null;
@@ -65,6 +67,7 @@ export class SynchVersionHistoryView extends ItemView {
   async refresh(): Promise<void> {
     this.versions = [];
     this.nextBefore = null;
+    this.previewCleared = false;
     await this.loadPage(null);
   }
 
@@ -159,9 +162,19 @@ export class SynchVersionHistoryView extends ItemView {
 
     if (this.versions.length === 0) {
       root.createEl("p", {
-        text: this.loading ? t("version.loadingHistory") : t("version.empty"),
+        text: this.loading
+          ? t("version.loadingHistory")
+          : this.clearing
+            ? t("version.clearing")
+            : t("version.empty"),
         cls: "synch-history-muted",
       });
+      if (this.previewCleared) {
+        root.createEl("p", {
+          text: t("version.clearPreviewNote"),
+          cls: "synch-history-preview-note",
+        });
+      }
       this.renderRefreshButton(root);
       return;
     }
@@ -177,12 +190,13 @@ export class SynchVersionHistoryView extends ItemView {
         text: this.loading ? t("loading") : t("loadMore"),
         cls: "mod-cta",
       });
-      more.disabled = this.loading;
+      more.disabled = this.loading || this.clearing;
       more.addEventListener("click", () => {
         void this.loadPage(this.nextBefore);
       });
     }
     this.renderRefreshButton(actions);
+    this.renderClearButton(actions);
   }
 
   private renderVersionRow(
@@ -206,7 +220,7 @@ export class SynchVersionHistoryView extends ItemView {
       text: t("preview"),
       cls: "synch-history-preview",
     });
-    preview.disabled = this.loading;
+    preview.disabled = this.loading || this.clearing;
     preview.addEventListener("click", () => {
       void this.previewVersion(version);
     });
@@ -215,7 +229,7 @@ export class SynchVersionHistoryView extends ItemView {
       text: restoreDisabled ? t("version.syncFirst") : t("version.restore"),
       cls: "synch-history-restore",
     });
-    button.disabled = restoreDisabled || this.loading;
+    button.disabled = restoreDisabled || this.loading || this.clearing;
     button.addEventListener("click", () => {
       void this.restoreVersion(version);
     });
@@ -226,10 +240,53 @@ export class SynchVersionHistoryView extends ItemView {
       text: this.loading ? t("refreshing") : t("refresh"),
       cls: "synch-history-refresh",
     });
-    refresh.disabled = this.loading;
+    refresh.disabled = this.loading || this.clearing;
     refresh.addEventListener("click", () => {
       void this.refresh();
     });
+  }
+
+  private renderClearButton(container: HTMLElement): void {
+    const clear = container.createEl("button", {
+      text: this.clearing ? t("version.clearing") : t("version.clear"),
+      cls: "mod-warning synch-history-clear",
+    });
+    clear.disabled = this.loading || this.clearing;
+    clear.addEventListener("click", () => {
+      void this.clearVersionHistory();
+    });
+  }
+
+  private async clearVersionHistory(): Promise<void> {
+    const path = this.state?.status === "ready" ? this.state.path : "";
+    const loaded = this.versions.length;
+    const total = this.nextBefore === null ? loaded : null;
+    const confirmed = await openConfirmModal(
+      this.app,
+      total === null
+        ? t("version.clearConfirmAll", { path })
+        : t("version.clearConfirm", { path, count: String(total) }),
+      t("version.clear"),
+      t("version.clearWarning"),
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    this.clearing = true;
+    this.render();
+    try {
+      // 预览阶段：不触达服务端，只演示界面流程，便于确认视觉与交互。
+      // 接入真实接口时，把这里替换为 this.controller.clearActiveFileVersions()。
+      await new Promise((resolve) => window.setTimeout(resolve, 600));
+      this.versions = [];
+      this.nextBefore = null;
+      this.previewCleared = true;
+      new Notice(t("version.cleared", { count: String(loaded) }));
+    } finally {
+      this.clearing = false;
+      this.render();
+    }
   }
 
   private async restoreVersion(version: SynchEntryVersion): Promise<void> {

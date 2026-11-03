@@ -6,8 +6,9 @@ export async function openConfirmModal(
   app: App,
   message: string,
   confirmText: string,
+  details?: string,
 ): Promise<boolean> {
-  return await new ConfirmModal(app, message, confirmText).openAndWait();
+  return await new ConfirmModal(app, message, confirmText, details).openAndWait();
 }
 
 class ConfirmModal extends Modal {
@@ -18,6 +19,7 @@ class ConfirmModal extends Modal {
     app: App,
     private readonly message: string,
     private readonly confirmText: string,
+    private readonly details?: string,
   ) {
     super(app);
   }
@@ -32,6 +34,12 @@ class ConfirmModal extends Modal {
   onOpen(): void {
     this.contentEl.empty();
     this.contentEl.createEl("p", { text: this.message });
+    if (this.details) {
+      this.contentEl.createEl("p", {
+        text: this.details,
+        cls: "synch-confirm-details",
+      });
+    }
     new Setting(this.contentEl)
       .addButton((button) =>
         button.setButtonText(t("cancel")).onClick(() => {
