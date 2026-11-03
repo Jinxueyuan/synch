@@ -321,7 +321,7 @@ export const de = {
     "version.clearConfirm": ({ path, count }: { path: string; count: string }) => `${count} Versionen von „${path}“ löschen?`,
     "version.clearConfirmAll": ({ path }: { path: string }) => `Den gesamten Versionsverlauf von „${path}“ löschen?`,
     "version.clearWarning": "Gelöschte Versionen können nicht wiederhergestellt werden. Der aktuelle Dateiinhalt bleibt unverändert.",
-    "version.clearPreviewNote": "Vorschaumodus: Es wurde nichts gelöscht. Zum Wiederherstellen aktualisieren.",
+    "version.clearFailed": ({ message }: { message: string }) => `Versionsverlauf konnte nicht gelöscht werden: ${message}`,
     "version.cleared": ({ count }: { count: string }) => `${count} Versionen gelöscht.`,
     "version.clearing": "Wird gelöscht...",
     "error.detail": ({ context, message }: { context: string; message: string }) => `${context}: ${message}`,

@@ -145,6 +145,23 @@ export class SynchVersionHistoryController
     this.deps.refreshUi();
   }
 
+  async clearActiveFileVersionHistory(): Promise<number> {
+    const file = this.deps.plugin.app.workspace.getActiveFile();
+    if (!(file instanceof TFile)) {
+      throw new Error("Open a synced file before clearing version history.");
+    }
+    if (!this.deps.hasAuthenticatedSession() || !this.deps.hasConnectedRemoteVault()) {
+      throw new Error("Connect and sign in before clearing version history.");
+    }
+
+    const clearedCount = await this.deps.syncController.clearEntryVersionsForPath(
+      file.path,
+    );
+    this.activeFileVersionsById.clear();
+    this.deps.refreshUi();
+    return clearedCount;
+  }
+
   async previewActiveFileVersion(versionId: string): Promise<SynchVersionPreview> {
     const file = this.deps.plugin.app.workspace.getActiveFile();
     if (!(file instanceof TFile)) {

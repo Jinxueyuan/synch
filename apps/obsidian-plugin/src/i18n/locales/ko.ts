@@ -291,7 +291,7 @@ export const ko = {
     "version.clearConfirm": ({ path, count }: { path: string; count: string }) => `"${path}"의 기록 ${count}개를 지울까요?`,
     "version.clearConfirmAll": ({ path }: { path: string }) => `"${path}"의 버전 기록을 모두 지울까요?`,
     "version.clearWarning": "지운 기록은 복구할 수 없습니다. 현재 파일 내용은 영향을 받지 않습니다.",
-    "version.clearPreviewNote": "미리보기 모드: 실제로 삭제되지 않았습니다. 새로 고치면 복원됩니다.",
+    "version.clearFailed": ({ message }: { message: string }) => `버전 기록을 지우지 못했습니다: ${message}`,
     "version.cleared": ({ count }: { count: string }) => `기록 ${count}개를 지웠습니다.`,
     "version.clearing": "지우는 중...",
     "auth.approvalReceived": "승인이 완료되었습니다. 로그인을 마무리하는 중...",

@@ -30,13 +30,13 @@ export interface VersionHistoryViewController {
   ): Promise<VersionHistoryViewState>;
   previewActiveFileVersion(versionId: string): Promise<SynchVersionPreview>;
   restoreActiveFileVersion(versionId: string): Promise<void>;
+  clearActiveFileVersionHistory(): Promise<number>;
 }
 
 export class SynchVersionHistoryView extends ItemView {
   private requestId = 0;
   private loading = false;
   private clearing = false;
-  private previewCleared = false;
   private state: VersionHistoryViewState | null = null;
   private versions: SynchEntryVersion[] = [];
   private nextBefore: SynchEntryVersionCursor | null = null;
@@ -67,7 +67,6 @@ export class SynchVersionHistoryView extends ItemView {
   async refresh(): Promise<void> {
     this.versions = [];
     this.nextBefore = null;
-    this.previewCleared = false;
     await this.loadPage(null);
   }
 
@@ -169,12 +168,6 @@ export class SynchVersionHistoryView extends ItemView {
             : t("version.empty"),
         cls: "synch-history-muted",
       });
-      if (this.previewCleared) {
-        root.createEl("p", {
-          text: t("version.clearPreviewNote"),
-          cls: "synch-history-preview-note",
-        });
-      }
       this.renderRefreshButton(root);
       return;
     }
@@ -276,13 +269,16 @@ export class SynchVersionHistoryView extends ItemView {
     this.clearing = true;
     this.render();
     try {
-      // 预览阶段：不触达服务端，只演示界面流程，便于确认视觉与交互。
-      // 接入真实接口时，把这里替换为 this.controller.clearActiveFileVersions()。
-      await new Promise((resolve) => window.setTimeout(resolve, 600));
+      const clearedCount = await this.controller.clearActiveFileVersionHistory();
       this.versions = [];
       this.nextBefore = null;
-      this.previewCleared = true;
-      new Notice(t("version.cleared", { count: String(loaded) }));
+      new Notice(t("version.cleared", { count: String(clearedCount) }));
+    } catch (error) {
+      new Notice(
+        t("version.clearFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
     } finally {
       this.clearing = false;
       this.render();

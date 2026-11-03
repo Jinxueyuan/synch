@@ -341,3 +341,130 @@ it("blocks entry purge while paused even with legacy read access", async () => {
 	})).rejects.toMatchObject({ code: "sync_paused" });
 	expect(stateRepository.readMutationEntry).not.toHaveBeenCalled();
 });
+
+describe("clearing a file's version history", () => {
+	it("deletes every version of a live entry and reports the visible count", async () => {
+		const stateRepository = createTestCoordinatorState({
+			readMutationEntry: vi.fn(() => ({
+				entryId: "entry-1",
+				revision: 3,
+				blobId: "blob-current",
+				encryptedMetadata: "metadata",
+				deleted: false,
+				updatedSeq: 3,
+				lastMutationId: null,
+			})),
+			countEntryVersions: vi.fn(() => 2),
+			listBlobIds: vi.fn(() => ["blob-old-1", "blob-old-2"]),
+		});
+		const service = createCoordinatorService({ stateRepository });
+
+		const result = await service.clearEntryVersions(testSocketSession(), {
+			type: "clear_entry_versions",
+			requestId: "clear-1",
+			entryId: "entry-1",
+		});
+
+		expect(result.message).toEqual({
+			type: "entry_versions_cleared",
+			requestId: "clear-1",
+			entryId: "entry-1",
+			clearedCount: 2,
+		});
+		expect(stateRepository.countEntryVersions).toHaveBeenCalledWith(
+			"entry-1",
+			expect.any(Number),
+		);
+		expect(stateRepository.deleteEntryVersions).toHaveBeenCalledWith("entry-1");
+	});
+
+	it("rejects an unknown entry without touching stored versions", async () => {
+		const stateRepository = createTestCoordinatorState();
+		const service = createCoordinatorService({ stateRepository });
+
+		await expect(
+			service.clearEntryVersions(testSocketSession(), {
+				type: "clear_entry_versions",
+				requestId: "clear-missing",
+				entryId: "missing-entry",
+			}),
+		).rejects.toMatchObject({ code: "not_found" });
+		expect(stateRepository.deleteEntryVersions).not.toHaveBeenCalled();
+	});
+
+	it("rejects deleted entries because purging owns that lifecycle", async () => {
+		const stateRepository = createTestCoordinatorState({
+			readMutationEntry: vi.fn(() => ({
+				entryId: "entry-deleted",
+				revision: 4,
+				blobId: null,
+				encryptedMetadata: "metadata",
+				deleted: true,
+				updatedSeq: 4,
+				lastMutationId: null,
+			})),
+		});
+		const service = createCoordinatorService({ stateRepository });
+
+		await expect(
+			service.clearEntryVersions(testSocketSession(), {
+				type: "clear_entry_versions",
+				requestId: "clear-deleted",
+				entryId: "entry-deleted",
+			}),
+		).rejects.toMatchObject({ code: "entry_deleted" });
+		expect(stateRepository.deleteEntryVersions).not.toHaveBeenCalled();
+	});
+
+	it("blocks clearing while the vault is paused for repair", async () => {
+		const stateRepository = createTestCoordinatorState({
+			readSyncPause: vi.fn(() => ({ pausedAt: 1, reason: "manual: stop" })),
+		});
+		const service = createCoordinatorService({ stateRepository });
+
+		await expect(
+			service.clearEntryVersions(testSocketSession(), {
+				type: "clear_entry_versions",
+				requestId: "clear-paused",
+				entryId: "entry-1",
+			}),
+		).rejects.toMatchObject({ code: "sync_paused" });
+		expect(stateRepository.readMutationEntry).not.toHaveBeenCalled();
+	});
+});
+
+it("clears entry history over the websocket control channel", async () => {
+	const socketService = createMockCoordinatorSocketService({
+		readSocketSession: vi.fn(() => testSocketSession()),
+		sendSocketMessage: vi.fn(),
+	});
+	const stateRepository = createTestCoordinatorState({
+		readMutationEntry: vi.fn(() => ({
+			entryId: "entry-1",
+			revision: 2,
+			blobId: "blob-current",
+			encryptedMetadata: "metadata",
+			deleted: false,
+			updatedSeq: 2,
+			lastMutationId: null,
+		})),
+		countEntryVersions: vi.fn(() => 1),
+	});
+	const service = createCoordinatorService({ stateRepository, socketService });
+
+	await service.handleSocketMessage(
+		testWebSocket(),
+		JSON.stringify({
+			type: "clear_entry_versions",
+			requestId: "request-clear",
+			entryId: "entry-1",
+		}),
+	);
+
+	expect(socketService.sendSocketMessage).toHaveBeenCalledWith("test", {
+		type: "entry_versions_cleared",
+		requestId: "request-clear",
+		entryId: "entry-1",
+		clearedCount: 1,
+	});
+});

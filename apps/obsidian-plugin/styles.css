@@ -572,12 +572,6 @@ button.mod-cta.synch-button-loading > .synch-button-spinner {
   white-space: nowrap;
 }
 
-.synch-history-preview-note {
-  color: var(--text-faint);
-  font-size: var(--font-ui-smaller);
-  margin: 0;
-}
-
 .synch-confirm-details {
   color: var(--text-muted);
   font-size: var(--font-ui-small);

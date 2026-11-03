@@ -2,6 +2,7 @@ import type { EntryVersionCaptureReason } from "../../domain/entry-policy";
 import type { PresenceSelection } from "./protocol-types";
 
 export type {
+	ClearEntryVersionsMessage,
 	ClientControlMessage,
 	CommitMutationMessage,
 	CommitMutationPayload,
@@ -294,6 +295,20 @@ export type DeletedEntriesPurgeFailedMessage = {
 	message: string;
 };
 
+export type EntryVersionsClearedMessage = {
+	type: "entry_versions_cleared";
+	requestId: string;
+	entryId: string;
+	clearedCount: number;
+};
+
+export type EntryVersionsClearFailedMessage = {
+	type: "entry_versions_clear_failed";
+	requestId: string;
+	code: string;
+	message: string;
+};
+
 export type EntryRestoreFailedMessage = {
 	type: "entry_restore_failed";
 	requestId: string;
@@ -328,6 +343,8 @@ export type ServerControlMessage =
 	| EntryVersionsRestoredMessage
 	| DeletedEntriesPurgedMessage
 	| DeletedEntriesPurgeFailedMessage
+	| EntryVersionsClearedMessage
+	| EntryVersionsClearFailedMessage
 	| EntryRestoreFailedMessage
 	| SessionErrorMessage
 	| PresenceUpdatedMessage
@@ -375,4 +392,8 @@ export type RestoreEntryVersionsResult = {
 export type DeletedEntriesPurgeResult = {
 	message: DeletedEntriesPurgedMessage;
 	candidateBlobIds: string[];
+};
+
+export type EntryVersionsClearResult = {
+	message: EntryVersionsClearedMessage;
 };

@@ -1,11 +1,13 @@
 import { SharingError } from "../../../../sharing/application/types";
 import type {
+	ClearEntryVersionsMessage,
 	CommitMutationsMessage,
 	CommitMutationsResult,
 	ClientControlMessage,
 	DeletedEntriesListedMessage,
 	DeletedEntriesPurgeResult,
 	EntryStatesListedMessage,
+	EntryVersionsClearResult,
 	EntryVersionsListedMessage,
 	ListDeletedEntriesMessage,
 	ListEntryStatesMessage,
@@ -58,6 +60,10 @@ export type CoordinatorControlMessageServices = {
 		session: SocketSession,
 		message: PurgeDeletedEntriesMessage,
 	): Promise<DeletedEntriesPurgeResult>;
+	clearEntryVersions(
+		session: SocketSession,
+		message: ClearEntryVersionsMessage,
+	): Promise<EntryVersionsClearResult>;
 };
 
 export class CoordinatorControlMessageHandler
@@ -337,6 +343,26 @@ export class CoordinatorControlMessageHandler
 				);
 				this.socketService.sendSocketMessage(connectionId, {
 					type: "deleted_entries_purge_failed",
+					requestId: parsed.requestId,
+					code: details.code,
+					message: details.message,
+				});
+			}
+			return;
+		}
+
+		if (parsed.type === "clear_entry_versions") {
+			try {
+				const result = await this.services.clearEntryVersions(session, parsed);
+				this.socketService.sendSocketMessage(connectionId, result.message);
+			} catch (error) {
+				const details = websocketRequestError(
+					error,
+					"entry_versions_clear_failed",
+					"entry version history clear failed",
+				);
+				this.socketService.sendSocketMessage(connectionId, {
+					type: "entry_versions_clear_failed",
 					requestId: parsed.requestId,
 					code: details.code,
 					message: details.message,

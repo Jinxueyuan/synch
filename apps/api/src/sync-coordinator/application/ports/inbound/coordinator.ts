@@ -1,4 +1,5 @@
 import type {
+	ClearEntryVersionsMessage,
 	CommitMutationMessage,
 	CommitMutationResult,
 	CommitMutationsMessage,
@@ -6,6 +7,7 @@ import type {
 	DeletedEntriesListedMessage,
 	DeletedEntriesPurgeResult,
 	EntryStatesListedMessage,
+	EntryVersionsClearResult,
 	EntryVersionsListedMessage,
 	ListDeletedEntriesMessage,
 	ListEntryStatesMessage,
@@ -52,6 +54,10 @@ export interface CoordinatorApplicationPort {
 		session: SocketSession,
 		message: PurgeDeletedEntriesMessage,
 	): Promise<DeletedEntriesPurgeResult>;
+	clearEntryVersions(
+		session: SocketSession,
+		message: ClearEntryVersionsMessage,
+	): Promise<EntryVersionsClearResult>;
 	runGc(
 		vaultId?: string,
 		options?: {

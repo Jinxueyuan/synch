@@ -72,6 +72,8 @@ export function bindCoordinatorApi(services: CoordinatorApiServices): Coordinato
 			services.entryService.restoreEntryVersions(session, message),
 		purgeDeletedEntries: (session, message) =>
 			services.entryService.purgeDeletedEntries(session, message),
+		clearEntryVersions: (session, message) =>
+			services.entryService.clearEntryVersions(session, message),
 		stageBlob: (token, vaultId, blobId, sizeBytes) =>
 			services.blobService.stageBlob(token, vaultId, blobId, sizeBytes),
 		abortStagedBlob: (vaultId, blobId) =>

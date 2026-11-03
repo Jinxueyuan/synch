@@ -1,14 +1,17 @@
 import { SyncCoordinatorApplicationError } from "../errors/coordinator-errors";
 import {
 	decideDeletedEntryPurge,
+	decideEntryHistoryClear,
 	isCurrentRevision,
 	isRestorePayloadCompatible,
 } from "../../domain/entry-policy";
 import type {
+	ClearEntryVersionsMessage,
 	CommitMutationsMessage,
 	DeletedEntriesPurgeResult,
 	DeletedEntriesListedMessage,
 	EntryStatesListedMessage,
+	EntryVersionsClearResult,
 	EntryVersionsListedMessage,
 	ListDeletedEntriesMessage,
 	ListEntryStatesMessage,
@@ -519,6 +522,53 @@ export class EntryService {
 				results: purged.results,
 			},
 			candidateBlobIds: purged.candidateBlobIds,
+		};
+	}
+
+	async clearEntryVersions(
+		session: SocketSession,
+		message: ClearEntryVersionsMessage,
+	): Promise<EntryVersionsClearResult> {
+		const retentionStart = Date.now() - this.readVersionHistoryRetentionMs();
+		const outcome = this.unitOfWork.run((stores) => {
+			if (stores.state.readSyncPause()) {
+				throw new SyncCoordinatorApplicationError("sync_paused");
+			}
+			const decision = decideEntryHistoryClear({
+				current: stores.entries.readMutationEntry(message.entryId),
+			});
+			if (decision.kind === "not_found") {
+				throw new SyncCoordinatorApplicationError("not_found", {
+					message: "entry not found",
+				});
+			}
+			if (decision.kind === "deleted_entry") {
+				throw new SyncCoordinatorApplicationError("entry_deleted", {
+					message: "deleted entries keep their history until purged",
+				});
+			}
+
+			const clearedCount = stores.versions.countEntryVersions(
+				message.entryId,
+				retentionStart,
+			);
+			const candidateBlobIds = stores.versions.listBlobIds(message.entryId);
+			stores.versions.deleteEntryVersions(message.entryId);
+			return { clearedCount, candidateBlobIds };
+		});
+
+		await this.blobGcService.collectPurgedBlobs(
+			session.vaultId,
+			outcome.candidateBlobIds,
+		);
+
+		return {
+			message: {
+				type: "entry_versions_cleared",
+				requestId: message.requestId,
+				entryId: message.entryId,
+				clearedCount: outcome.clearedCount,
+			},
 		};
 	}
 

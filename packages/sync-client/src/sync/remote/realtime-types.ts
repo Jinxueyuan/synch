@@ -83,6 +83,10 @@ export interface PurgeDeletedEntryPayload {
   revision: number;
 }
 
+export interface ClearEntryVersionsPayload {
+  entryId: string;
+}
+
 export interface SyncRealtimeSession {
   serverCursor: number;
   storageUsedBytes: number;
@@ -122,6 +126,9 @@ export interface SyncRealtimeSession {
   purgeDeletedEntries(
     input: PurgeDeletedEntryPayload[],
   ): Promise<DeletedEntriesPurgedResponse>;
+  clearEntryVersions(
+    input: ClearEntryVersionsPayload,
+  ): Promise<EntryVersionsClearedResponse>;
   detachLocalVault(): Promise<void>;
   commitMutation(mutation: CommitMutationPayload): Promise<CommitAcceptedResult>;
   commitMutations(mutations: CommitMutationPayload[]): Promise<CommitMutationsResult>;
@@ -210,6 +217,11 @@ export type PurgeDeletedEntryBatchResult =
 
 export interface DeletedEntriesPurgedResponse {
   results: PurgeDeletedEntryBatchResult[];
+}
+
+export interface EntryVersionsClearedResponse {
+  entryId: string;
+  clearedCount: number;
 }
 
 export class SyncRealtimeError extends Error {
@@ -354,6 +366,16 @@ export type ServerMessage =
       type: "deleted_entries_purged";
       requestId: string;
     } & DeletedEntriesPurgedResponse)
+  | ({
+      type: "entry_versions_cleared";
+      requestId: string;
+    } & EntryVersionsClearedResponse)
+  | {
+      type: "entry_versions_clear_failed";
+      requestId: string;
+      code: string;
+      message: string;
+    }
   | {
       type: "entry_restore_failed";
       requestId: string;

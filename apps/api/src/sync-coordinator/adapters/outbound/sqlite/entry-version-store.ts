@@ -177,6 +177,20 @@ export class CoordinatorEntryVersionStore {
 			.all()
 			.flatMap((row) => (row.blobId === null ? [] : [row.blobId]));
 	}
+	countEntryVersions(entryId: string, retentionStart: number): number {
+		const row = this.handle.db
+			.select({ count: sql<number>`count(*)` })
+			.from(doSchema.entryVersions)
+			.where(
+				and(
+					eq(doSchema.entryVersions.entryId, entryId),
+					gte(doSchema.entryVersions.capturedAt, retentionStart),
+				),
+			)
+			.get();
+
+		return Number(row?.count ?? 0);
+	}
 	deleteEntryVersions(entryId: string): void {
 		this.handle.db
 			.delete(doSchema.entryVersions)

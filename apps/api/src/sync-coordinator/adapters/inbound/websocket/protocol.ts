@@ -123,6 +123,12 @@ export const purgeDeletedEntriesMessageSchema = z.object({
 	entries: z.array(purgeDeletedEntryPayloadSchema).min(1).max(100),
 });
 
+export const clearEntryVersionsMessageSchema = z.object({
+	type: z.literal("clear_entry_versions"),
+	requestId: requestIdSchema,
+	entryId: nonEmptyString,
+});
+
 export const detachLocalVaultMessageSchema = z.object({
 	type: z.literal("detach_local_vault"),
 	requestId: requestIdSchema,
@@ -179,6 +185,7 @@ export const clientControlMessageSchema = z.discriminatedUnion("type", [
 	restoreEntryVersionMessageSchema,
 	restoreEntryVersionsMessageSchema,
 	purgeDeletedEntriesMessageSchema,
+	clearEntryVersionsMessageSchema,
 	detachLocalVaultMessageSchema,
 	heartbeatMessageSchema,
 	watchStorageStatusMessageSchema,
@@ -190,6 +197,7 @@ export const clientControlMessageSchema = z.discriminatedUnion("type", [
 ]);
 
 export type {
+	ClearEntryVersionsMessage,
 	ClientControlMessage,
 	CommitMutationMessage,
 	CommitMutationPayload,

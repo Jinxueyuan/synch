@@ -296,7 +296,7 @@ export const zhTw = {
     "version.clearConfirm": ({ path, count }: { path: string; count: string }) => `清空「${path}」的 ${count} 個歷史版本？`,
     "version.clearConfirmAll": ({ path }: { path: string }) => `清空「${path}」的全部歷史版本？`,
     "version.clearWarning": "清空後這些歷史版本無法復原，目前檔案內容不受影響。",
-    "version.clearPreviewNote": "介面預覽：歷史版本並未真正刪除，按重新整理即可復原。",
+    "version.clearFailed": ({ message }: { message: string }) => `清空版本歷史失敗：${message}`,
     "version.cleared": ({ count }: { count: string }) => `已清空 ${count} 個歷史版本。`,
     "version.clearing": "正在清空...",
     "auth.approvalReceived": "已獲得核准。正在完成登入...",

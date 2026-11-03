@@ -113,6 +113,7 @@ export function createTestCoordinatorState(
 		insertEntryVersion: vi.fn(() => true),
 		hasRestorableHistory: vi.fn(() => false),
 		listBlobIds: vi.fn(() => []),
+		countEntryVersions: vi.fn(() => 0),
 		deleteEntryVersions: vi.fn(),
 		readBlob: vi.fn(() => null),
 		read: vi.fn(() => ({

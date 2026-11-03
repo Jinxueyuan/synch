@@ -107,6 +107,19 @@ export class SyncVersionHistoryService {
     return await this.previewEntryVersion(entry.entryId, version, path);
   }
 
+  async clearEntryVersionsForPath(path: string): Promise<number> {
+    const store = this.deps.getStore();
+    const entry = await store.getEntryByPath(path);
+    if (!entry || entry.deleted) {
+      throw new Error("The active file is not synced.");
+    }
+
+    return await this.deps.withRealtimeSession(async (session) => {
+      const result = await session.clearEntryVersions({ entryId: entry.entryId });
+      return result.clearedCount;
+    });
+  }
+
   async listDeletedEntries(
     before: DeletedEntryPageCursor | null,
     limit: number,

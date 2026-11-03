@@ -721,6 +721,10 @@ export class SyncEngine {
     return await this.syncVersionHistoryService.purgeDeletedEntries(entries);
   }
 
+  async clearEntryVersionsForPath(path: string): Promise<number> {
+    return await this.syncVersionHistoryService.clearEntryVersionsForPath(path);
+  }
+
   async previewDeletedEntry(
     entryId: string,
     fallbackPath: string,

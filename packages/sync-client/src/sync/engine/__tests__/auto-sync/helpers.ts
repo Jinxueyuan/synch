@@ -99,6 +99,9 @@ export function createRealtimeClient(
         async restoreEntryVersions() {
           throw new Error("auto-sync tests should not restore entry versions");
         },
+        async clearEntryVersions() {
+          throw new Error("auto-sync tests should not clear entry versions");
+        },
         async purgeDeletedEntries() {
           throw new Error("auto-sync tests should not purge deleted entries");
         },

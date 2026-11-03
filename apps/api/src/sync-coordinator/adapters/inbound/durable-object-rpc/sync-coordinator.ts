@@ -5,6 +5,7 @@ import type {
 import { DurableObject } from "cloudflare:workers";
 import { apiError } from "../../../../errors";
 import type {
+	ClearEntryVersionsMessage,
 	CommitMutationMessage,
 	CommitMutationResult,
 	CommitMutationsMessage,
@@ -12,6 +13,7 @@ import type {
 	DeletedEntriesListedMessage,
 	DeletedEntriesPurgeResult,
 	EntryStatesListedMessage,
+	EntryVersionsClearResult,
 	EntryVersionsListedMessage,
 	ListDeletedEntriesMessage,
 	ListEntryStatesMessage,
@@ -191,6 +193,15 @@ export class SyncCoordinator extends DurableObject {
 	): Promise<DeletedEntriesPurgeResult> {
 		return await this.withRpcError("purgeDeletedEntries", () =>
 			this.services.purgeDeletedEntries(session, message),
+		);
+	}
+
+	async clearEntryVersions(
+		session: SocketSession,
+		message: ClearEntryVersionsMessage,
+	): Promise<EntryVersionsClearResult> {
+		return await this.withRpcError("clearEntryVersions", () =>
+			this.services.clearEntryVersions(session, message),
 		);
 	}
 

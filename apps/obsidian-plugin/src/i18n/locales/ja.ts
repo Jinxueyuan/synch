@@ -296,7 +296,7 @@ export const ja = {
     "version.clearConfirm": ({ path, count }: { path: string; count: string }) => `「${path}」の履歴 ${count} 件を消去しますか？`,
     "version.clearConfirmAll": ({ path }: { path: string }) => `「${path}」のバージョン履歴をすべて消去しますか？`,
     "version.clearWarning": "消去した履歴は復元できません。現在のファイル内容には影響しません。",
-    "version.clearPreviewNote": "プレビュー表示：実際には削除されていません。更新すると元に戻ります。",
+    "version.clearFailed": ({ message }: { message: string }) => `バージョン履歴の消去に失敗しました：${message}`,
     "version.cleared": ({ count }: { count: string }) => `履歴 ${count} 件を消去しました。`,
     "version.clearing": "消去中...",
     "auth.approvalReceived": "承認されました。サインインを完了しています...",

@@ -65,6 +65,11 @@ type ClientMessage =
       entries: PurgeDeletedEntryPayload[];
     }
   | {
+      type: "clear_entry_versions";
+      requestId: string;
+      entryId: string;
+    }
+  | {
       type: "detach_local_vault";
       requestId: string;
     }

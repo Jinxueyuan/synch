@@ -316,7 +316,7 @@ export const en = {
     "version.clearConfirm": ({ path, count }: { path: string; count: string }) => `Clear ${count} version${count === "1" ? "" : "s"} of "${path}"?`,
     "version.clearConfirmAll": ({ path }: { path: string }) => `Clear all version history for "${path}"?`,
     "version.clearWarning": "Cleared versions cannot be restored. The current file content is not affected.",
-    "version.clearPreviewNote": "Preview mode: nothing was actually deleted. Refresh to restore the list.",
+    "version.clearFailed": ({ message }: { message: string }) => `Clear version history failed: ${message}`,
     "version.cleared": ({ count }: { count: string }) => `Cleared ${count} version${count === "1" ? "" : "s"}.`,
     "version.clearing": "Clearing...",
     "conflict.viewName": "Conflicts",

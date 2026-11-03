@@ -115,3 +115,24 @@ export function decideDeletedEntryPurge(input: {
 	}
 	return { kind: "accepted" };
 }
+
+export type EntryHistoryClearDecision =
+	| { kind: "not_found" }
+	| { kind: "deleted_entry" }
+	| { kind: "accepted" };
+
+/**
+ * Clearing history is only offered for live entries: deleted entries are
+ * purged from the deleted-files view, which already owns that lifecycle.
+ */
+export function decideEntryHistoryClear(input: {
+	current: { deleted: boolean } | null;
+}): EntryHistoryClearDecision {
+	if (!input.current) {
+		return { kind: "not_found" };
+	}
+	if (input.current.deleted) {
+		return { kind: "deleted_entry" };
+	}
+	return { kind: "accepted" };
+}

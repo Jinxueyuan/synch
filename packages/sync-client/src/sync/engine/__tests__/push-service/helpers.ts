@@ -52,6 +52,9 @@ export function createPushSession(
     async restoreEntryVersions() {
       throw new Error("push tests should not restore entry versions");
     },
+    async clearEntryVersions() {
+      throw new Error("push tests should not clear entry versions");
+    },
     async purgeDeletedEntries() {
       throw new Error("push tests should not purge deleted entries");
     },

@@ -803,6 +803,10 @@ export class SynchPluginController implements SynchSettingsController {
     return await this.versionHistoryController.restoreActiveFileVersion(versionId);
   }
 
+  async clearActiveFileVersionHistory(): Promise<number> {
+    return await this.versionHistoryController.clearActiveFileVersionHistory();
+  }
+
   async listDeletedFiles(
     before: SynchDeletedFileCursor | null,
     limit: number,

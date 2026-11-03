@@ -23,6 +23,7 @@ export interface VersionHistorySyncPort {
     version: EntryVersion,
   ): Promise<SyncEntryVersionPreview>;
   restoreEntryVersionForPath(path: string, version: EntryVersion): Promise<void>;
+  clearEntryVersionsForPath(path: string): Promise<number>;
   listDeletedEntries(
     before: DeletedEntryPageCursor | null,
     limit: number,

@@ -73,6 +73,12 @@ export type PurgeDeletedEntriesMessage = {
 	entries: Array<{ entryId: string; revision: number }>;
 };
 
+export type ClearEntryVersionsMessage = {
+	type: "clear_entry_versions";
+	requestId: string;
+	entryId: string;
+};
+
 export type DetachLocalVaultMessage = {
 	type: "detach_local_vault";
 	requestId: string;
@@ -111,6 +117,7 @@ export type ClientControlMessage =
 	| RestoreEntryVersionMessage
 	| RestoreEntryVersionsMessage
 	| PurgeDeletedEntriesMessage
+	| ClearEntryVersionsMessage
 	| DetachLocalVaultMessage
 	| HeartbeatMessage
 	| WatchStorageStatusMessage

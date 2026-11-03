@@ -291,6 +291,9 @@ export function createRealtimeSession(input: {
     async restoreEntryVersions() {
       throw new Error("pull tests should not restore entry versions");
     },
+    async clearEntryVersions() {
+      throw new Error("pull tests should not clear entry versions");
+    },
     async purgeDeletedEntries() {
       throw new Error("pull tests should not purge deleted entries");
     },

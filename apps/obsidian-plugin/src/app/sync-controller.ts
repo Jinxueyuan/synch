@@ -529,6 +529,13 @@ export class SyncController {
     await this.syncEngine.restoreEntryVersionForPath(path, version);
   }
 
+  async clearEntryVersionsForPath(path: string): Promise<number> {
+    if (!this.deps.hasActiveRemoteVaultSession() || !this.deps.hasAuthenticatedSession()) {
+      throw new Error("Connect and sign in before clearing version history.");
+    }
+    return await this.syncEngine.clearEntryVersionsForPath(path);
+  }
+
   async listDeletedEntries(
     before: DeletedEntryPageCursor | null,
     limit: number,

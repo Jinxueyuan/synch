@@ -1,4 +1,5 @@
 import type {
+  ClearEntryVersionsPayload,
   CommitAcceptedResult,
   CommitMutationPayload,
   CommitMutationsResult,
@@ -7,6 +8,7 @@ import type {
   DeletedEntryPageCursor,
   EntryVersionPageCursor,
   EntryVersionRestoredResponse,
+  EntryVersionsClearedResponse,
   EntryVersionsRestoredResponse,
   EntryVersionsResponse,
   HelloAckMessage,
@@ -253,6 +255,26 @@ export class SyncRealtimeApiSession implements SyncRealtimeSession {
 
     return {
       results: message.results,
+    };
+  }
+
+  async clearEntryVersions(
+    input: ClearEntryVersionsPayload,
+  ): Promise<EntryVersionsClearedResponse> {
+    const message = await this.transport.request({
+      type: "clear_entry_versions",
+      entryId: input.entryId,
+    });
+
+    if (message.type !== "entry_versions_cleared") {
+      throw new Error(
+        "clear entry versions did not produce an entry_versions_cleared response",
+      );
+    }
+
+    return {
+      entryId: message.entryId,
+      clearedCount: message.clearedCount,
     };
   }
 

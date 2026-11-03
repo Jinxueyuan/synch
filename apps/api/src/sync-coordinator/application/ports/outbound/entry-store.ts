@@ -55,6 +55,7 @@ export interface EntryVersionStore extends EntryHistoryStore {
 	insertEntryVersion(input: InsertEntryVersionInput): boolean;
 	hasRestorableHistory(entryId: string, retentionStart: number): boolean;
 	listBlobIds(entryId: string): string[];
+	countEntryVersions(entryId: string, retentionStart: number): number;
 	deleteEntryVersions(entryId: string): void;
 	expireEntryVersions(now: number): void;
 }
