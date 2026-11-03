@@ -117,6 +117,17 @@ jobs:
           echo "mode=${mode} sensitive=${sensitive} target=${target}"
           echo "target=${target}" >> "$GITHUB_OUTPUT"
 
+          # Cloudflare Workers Builds deploys the code but never applies D1
+          # migrations, so a schema change that reaches main without a manual
+          # `db:migrate:cloudflare:community` leaves the API querying tables
+          # that do not exist.
+          if grep -qE '^apps/api/drizzle/[^/]+\.sql$' "$RUNNER_TEMP/changed.txt"; then
+            echo "migrations=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::This sync adds D1 migrations. Run pnpm -C apps/api db:migrate:cloudflare:community after merging."
+          else
+            echo "migrations=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Push to main
         if: steps.changes.outputs.target == 'main'
         run: |
@@ -134,6 +145,14 @@ jobs:
             echo
             echo "This branch is rewritten on every run; review the diff below and merge when you are comfortable."
             echo
+            if [ "${{ steps.changes.outputs.migrations }}" = "true" ]; then
+              echo "> [!WARNING]"
+              echo "> **This sync includes database migrations.** Merging deploys the new code, but Cloudflare never applies D1 migrations on its own. Run \`pnpm -C apps/api db:migrate:cloudflare:community\` immediately after merging, otherwise the API answers \`unexpected server error\`."
+              echo
+              echo "New migration files:"
+              grep -E '^apps/api/drizzle/[^/]+\.sql$' "$RUNNER_TEMP/changed.txt" | sed 's/^/- `/; s/$/`/'
+              echo
+            fi
             echo "### Commits merged in"
             git log --oneline "$PRE_MERGE_SHA"..HEAD | sed 's/^/- /'
             echo
