@@ -1,0 +1,144 @@
+name: Sync upstream
+
+# Keeps this fork aligned with hjinco/synch, entirely on GitHub.
+#
+#   - docs / plugin / site changes ........ merge and push straight to main
+#   - server code or build config ......... push sync/upstream and open a PR
+#   - merge conflict ..................... abort, open an issue, fail the run
+#
+# Cloudflare Workers Builds deploys from main, so only the "safe" half is
+# allowed to reach main unattended.
+
+on:
+  schedule:
+    # 03:17 UTC = 11:17 Beijing time, deliberately off the hour.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "auto = safe changes go straight to main / pr = always open a PR / merge = always push to main"
+        type: choice
+        options: [auto, pr, merge]
+        default: auto
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: hjinco/synch
+  UPSTREAM_BRANCH: main
+  SYNC_BRANCH: sync/upstream
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --no-tags upstream "${UPSTREAM_BRANCH}"
+
+      - name: Check whether upstream moved
+        id: state
+        run: |
+          if git merge-base --is-ancestor "upstream/${UPSTREAM_BRANCH}" HEAD; then
+            echo "pending=false" >> "$GITHUB_OUTPUT"
+            echo "Already up to date with upstream/${UPSTREAM_BRANCH}."
+          else
+            echo "pending=true" >> "$GITHUB_OUTPUT"
+            echo "upstream/${UPSTREAM_BRANCH} has new commits."
+          fi
+
+      - name: Merge upstream
+        id: merge
+        if: steps.state.outputs.pending == 'true'
+        continue-on-error: true
+        run: |
+          echo "PRE_MERGE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          git merge --no-edit "upstream/${UPSTREAM_BRANCH}"
+
+      - name: Report merge conflict
+        if: steps.state.outputs.pending == 'true' && steps.merge.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          conflict_files="$(git diff --name-only --diff-filter=U | tr '\n' ' ')"
+          git merge --abort || true
+          echo "::error::Merge conflict with upstream, nothing was changed. Conflicting files: ${conflict_files:-unknown}"
+          open_issues="$(gh issue list --state open --search 'upstream merge conflict in:title' --json number --jq 'length')"
+          if [ "$open_issues" = "0" ]; then
+            gh issue create \
+              --title "Upstream merge conflict needs a manual fix" \
+              --body "$(printf 'The scheduled sync could not merge `upstream/%s` into `main`, so nothing was changed this run.\n\nConflicting files:\n%s\n\nResolve it once by hand (or re-run this workflow after the upstream fix lands), then delete this issue. The workflow keeps trying daily and will not open duplicates.\n' "${UPSTREAM_BRANCH}" "${conflict_files:-unknown}")"
+          fi
+          exit 1
+
+      - name: List incoming changes
+        id: changes
+        if: steps.merge.outcome == 'success' && steps.state.outputs.pending == 'true'
+        run: |
+          git diff --name-only "$PRE_MERGE_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
+          echo "Files changed by this sync:"
+          cat "$RUNNER_TEMP/changed.txt"
+          if grep -qE '^(apps/api/|scripts/|pnpm-lock\.yaml|pnpm-workspace\.yaml|package\.json|\.github/workflows/api-)' "$RUNNER_TEMP/changed.txt"; then
+            echo "sensitive=true" >> "$GITHUB_OUTPUT"
+            echo "Touches server code or build config; a PR is required."
+          else
+            echo "sensitive=false" >> "$GITHUB_OUTPUT"
+            echo "Documentation/plugin/site only; safe to push to main."
+          fi
+
+      - name: Push to main
+        if: steps.merge.outcome == 'success' && (inputs.mode == 'merge' || (inputs.mode != 'pr' && steps.changes.outputs.sensitive == 'false'))
+        run: |
+          git push origin HEAD:main
+
+      - name: Open or refresh sync pull request
+        if: steps.merge.outcome == 'success' && inputs.mode != 'merge' && (inputs.mode == 'pr' || steps.changes.outputs.sensitive == 'true')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push --force origin "HEAD:refs/heads/${SYNC_BRANCH}"
+
+          {
+            echo "The scheduled sync merged \`upstream/${UPSTREAM_BRANCH}\` into \`${SYNC_BRANCH}\`, but the change touches server code or build configuration, so it needs a look before it reaches \`main\` (and therefore before Cloudflare redeploys)."
+            echo
+            echo "This branch is rewritten on every run; review the diff below and merge when you are comfortable."
+            echo
+            echo "### Commits merged in"
+            git log --oneline "$PRE_MERGE_SHA"..HEAD | sed 's/^/- /'
+            echo
+            echo "### Files changed"
+            sed 's/^/- /' "$RUNNER_TEMP/changed.txt"
+          } > "$RUNNER_TEMP/pr-body.md"
+
+          existing="$(gh pr list --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" \
+              --title "Sync upstream: server-side changes need review" \
+              --body-file "$RUNNER_TEMP/pr-body.md"
+            echo "Updated pull request #${existing}."
+          else
+            gh pr create \
+              --base main \
+              --head "$SYNC_BRANCH" \
+              --title "Sync upstream: server-side changes need review" \
+              --body-file "$RUNNER_TEMP/pr-body.md"
+          fi
