@@ -34,6 +34,8 @@ env:
   UPSTREAM_REPO: hjinco/synch
   UPSTREAM_BRANCH: main
   SYNC_BRANCH: sync/upstream
+  # Paths that can affect what Cloudflare builds and deploys.
+  SENSITIVE_PATTERN: '^(apps/api/|scripts/|pnpm-lock\.yaml|pnpm-workspace\.yaml|package\.json|\.github/workflows/api-)'
 
 jobs:
   sync:
@@ -86,32 +88,42 @@ jobs:
           if [ "$open_issues" = "0" ]; then
             gh issue create \
               --title "Upstream merge conflict needs a manual fix" \
-              --body "$(printf 'The scheduled sync could not merge `upstream/%s` into `main`, so nothing was changed this run.\n\nConflicting files:\n%s\n\nResolve it once by hand (or re-run this workflow after the upstream fix lands), then delete this issue. The workflow keeps trying daily and will not open duplicates.\n' "${UPSTREAM_BRANCH}" "${conflict_files:-unknown}")"
+              --body "$(printf 'The scheduled sync could not merge `upstream/%s` into `main`, so nothing was changed this run.\n\nConflicting files:\n%s\n\nResolve it once by hand, then close this issue. The workflow keeps trying daily and will not open duplicates.\n' "${UPSTREAM_BRANCH}" "${conflict_files:-unknown}")"
           fi
           exit 1
 
-      - name: List incoming changes
+      - name: Decide where the merge goes
         id: changes
         if: steps.merge.outcome == 'success' && steps.state.outputs.pending == 'true'
+        env:
+          MODE: ${{ inputs.mode }}
         run: |
+          mode="${MODE:-auto}"
           git diff --name-only "$PRE_MERGE_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
           echo "Files changed by this sync:"
           cat "$RUNNER_TEMP/changed.txt"
-          if grep -qE '^(apps/api/|scripts/|pnpm-lock\.yaml|pnpm-workspace\.yaml|package\.json|\.github/workflows/api-)' "$RUNNER_TEMP/changed.txt"; then
-            echo "sensitive=true" >> "$GITHUB_OUTPUT"
-            echo "Touches server code or build config; a PR is required."
-          else
-            echo "sensitive=false" >> "$GITHUB_OUTPUT"
-            echo "Documentation/plugin/site only; safe to push to main."
+
+          sensitive=false
+          if grep -qE "$SENSITIVE_PATTERN" "$RUNNER_TEMP/changed.txt"; then
+            sensitive=true
           fi
 
+          case "$mode" in
+            merge) target=main ;;
+            pr)    target=pr ;;
+            *)     if [ "$sensitive" = "true" ]; then target=pr; else target=main; fi ;;
+          esac
+
+          echo "mode=${mode} sensitive=${sensitive} target=${target}"
+          echo "target=${target}" >> "$GITHUB_OUTPUT"
+
       - name: Push to main
-        if: steps.merge.outcome == 'success' && (inputs.mode == 'merge' || (inputs.mode != 'pr' && steps.changes.outputs.sensitive == 'false'))
+        if: steps.changes.outputs.target == 'main'
         run: |
           git push origin HEAD:main
 
       - name: Open or refresh sync pull request
-        if: steps.merge.outcome == 'success' && inputs.mode != 'merge' && (inputs.mode == 'pr' || steps.changes.outputs.sensitive == 'true')
+        if: steps.changes.outputs.target == 'pr'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
