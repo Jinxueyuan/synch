@@ -128,7 +128,10 @@ export const SUBSCRIPTION_PLAN_POLICIES = {
 			syncedVaults: 0,
 			storageLimitBytes: 0,
 			maxFileSizeBytes: 0,
-			versionHistoryRetentionDays: 1,
+			// Local fork: self-hosted keeps a full year of version history.
+			// 0 is NOT "unlimited" here — a zero retention window would make
+			// every prior version immediately unrecoverable.
+			versionHistoryRetentionDays: 365,
 		},
 		features: {
 			snapshots: true,
